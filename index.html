@@ -1,115 +1,600 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Code Beautifier & Debugger</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>zurai02-Assistant — Universal Code Beautifier</title>
+  <style>
+    :root {
+      --bg: #0d0d0f;
+      --surface: #16161a;
+      --surface-2: #1e1e24;
+      --border: #2a2a33;
+      --text: #e8e8ec;
+      --text-2: #a0a0ac;
+      --text-3: #6e6e7a;
+      --accent: #7c7cff;
+      --positive: #3ddc84;
+      --warning: #ffb86c;
+      --danger: #ff6b6b;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --font-mono: "SF Mono", "Fira Code", "JetBrains Mono", Consolas, Monaco, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 960px;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 8px;
+    }
+    .logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #7c7cff, #a78bfa);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 20px;
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(124, 124, 255, 0.25);
+    }
+    .title-group h1 {
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+    }
+    .title-group p {
+      font-size: 14px;
+      color: var(--text-2);
+      margin-top: 2px;
+    }
+
+    .tagline {
+      font-size: 15px;
+      color: var(--text-2);
+      margin-bottom: 28px;
+      line-height: 1.5;
+    }
+
+    /* Panels */
+    .editor-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 768px) {
+      .editor-grid { grid-template-columns: 1fr; }
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: border-color 0.2s;
+    }
+    .panel:hover { border-color: #3a3a45; }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+    }
+    .panel-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-2);
+    }
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--text-3);
+      transition: background 0.3s;
+    }
+    .dot.active { background: var(--positive); box-shadow: 0 0 8px rgba(61, 220, 132, 0.4); }
+    .badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 6px;
+      background: rgba(124, 124, 255, 0.12);
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    textarea.code-area {
+      width: 100%;
+      min-height: 300px;
+      padding: 16px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      line-height: 1.7;
+      color: var(--text);
+      background: transparent;
+      border: none;
+      resize: vertical;
+      outline: none;
+      tab-size: 4;
+    }
+    textarea.code-area::placeholder { color: var(--text-3); }
+    textarea.code-area[readonly] { cursor: default; }
+
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      padding: 12px 16px;
+      background: var(--surface-2);
+      border-top: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+
+    select, button {
+      font-family: inherit;
+      font-size: 13px;
+      padding: 7px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      outline: none;
+      transition: all 0.15s;
+    }
+    select:hover, button:hover {
+      background: #25252e;
+      border-color: #40404d;
+    }
+    button.primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+      font-weight: 600;
+    }
+    button.primary:hover {
+      background: #6b6bff;
+      border-color: #6b6bff;
+      box-shadow: 0 4px 16px rgba(124, 124, 255, 0.3);
+    }
+    button.success {
+      background: var(--positive);
+      color: #0d0d0f;
+      border-color: var(--positive);
+      font-weight: 600;
+    }
+
+    /* Status & Issues */
+    .status-bar {
+      font-size: 13px;
+      color: var(--text-3);
+      min-height: 20px;
+      margin-bottom: 12px;
+      padding-left: 4px;
+    }
+    .status-bar.ok { color: var(--positive); }
+
+    .issues-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      display: none;
+    }
+    .issues-box.show { display: block; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+    .issues-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-2);
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .issue {
+      font-size: 13px;
+      color: var(--text-2);
+      padding: 4px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .issue::before {
+      content: "•";
+      color: var(--warning);
+      font-weight: bold;
+    }
+    .issue.fixed::before {
+      content: "✓";
+      color: var(--positive);
+    }
+
+    /* Footer */
+    .footer {
+      margin-top: 32px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-3);
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <header class="header">
-            <div class="header-content">
-                <h1>🤖 AI Code Beautifier & Debugger</h1>
-                <p>Paste your code. Get AI-powered analysis, formatting, and fixes.</p>
-            </div>
-        </header>
 
-        <main class="main-grid">
-            <!-- Input Section -->
-            <section class="input-section">
-                <div class="section-header">
-                    <h2>📝 Input Code</h2>
-                    <div class="language-selector">
-                        <label>Language:</label>
-                        <select id="languageSelect">
-                            <option value="javascript">JavaScript</option>
-                            <option value="python">Python</option>
-                            <option value="lua">Lua</option>
-                            <option value="html">HTML</option>
-                            <option value="css">CSS</option>
-                            <option value="json">JSON</option>
-                            <option value="sql">SQL</option>
-                            <option value="plaintext">Plain Text</option>
-                        </select>
-                    </div>
-                </div>
-                <textarea id="codeInput" placeholder="Paste your code here..."></textarea>
-                <div class="input-actions">
-                    <button id="beautifyBtn" class="btn btn-primary">✨ Beautify</button>
-                    <button id="analyzeBtn" class="btn btn-secondary">🔍 Analyze with AI</button>
-                    <button id="clearBtn" class="btn btn-tertiary">🗑️ Clear</button>
-                </div>
-            </section>
+<div class="container">
+  <div class="header">
+    <div class="logo">Z</div>
+    <div class="title-group">
+      <h1>zurai02-Assistant</h1>
+      <p>Universal code beautifier & fixer</p>
+    </div>
+  </div>
 
-            <!-- Output Section -->
-            <section class="output-section">
-                <div class="section-header">
-                    <h2>✨ Formatted Code</h2>
-                    <button id="copyBtn" class="btn btn-small">📋 Copy</button>
-                </div>
-                <pre id="codeOutput" class="code-display">
-<code id="codeHighlight" class="language-javascript">// Your beautified code will appear here</code>
-                </pre>
-            </section>
+  <p class="tagline">
+    Paste messy code — <strong>Lua</strong>, <strong>Luau</strong>, <strong>Python</strong>, <strong>JavaScript</strong>, <strong>JSON</strong> — and the assistant will beautify, fix issues, and explain what changed.
+  </p>
 
-            <!-- AI Analysis Section -->
-            <section class="analysis-section">
-                <div class="section-header">
-                    <h2>🤖 AI Analysis</h2>
-                </div>
-                <div id="analysisContainer" class="analysis-container">
-                    <div class="placeholder">
-                        <p>Click "Analyze with AI" to get intelligent code review and suggestions</p>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Issues & Fixes -->
-            <section class="issues-section">
-                <div class="section-header">
-                    <h2>⚠️ Issues Found</h2>
-                </div>
-                <div id="issuesContainer" class="issues-container">
-                    <div class="placeholder">
-                        <p>No issues detected. Your code looks good!</p>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Learning Panel -->
-            <section class="learning-section">
-                <div class="section-header">
-                    <h2>📚 Learning Hub</h2>
-                </div>
-                <div id="learningContainer" class="learning-container">
-                    <div class="learning-item">
-                        <h3>Tips & Tricks</h3>
-                        <p>Learn best practices as you code</p>
-                    </div>
-                    <div class="learning-item">
-                        <h3>Patterns</h3>
-                        <p>Common patterns from analyzed code</p>
-                    </div>
-                    <div class="learning-item">
-                        <h3>History</h3>
-                        <p>Your recent code analysis history</p>
-                    </div>
-                </div>
-            </section>
-        </main>
-
-        <!-- Loading Indicator -->
-        <div id="loader" class="loader hidden">
-            <div class="spinner"></div>
-            <p>Analyzing your code...</p>
-        </div>
-
-        <!-- Notification Toast -->
-        <div id="toast" class="toast"></div>
+  <div class="editor-grid">
+    <!-- INPUT -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-label"><span class="dot" id="in-dot"></span> Input</span>
+        <span class="badge" id="lang-badge">lua</span>
+      </div>
+      <textarea class="code-area" id="input" spellcheck="false" placeholder="-- Paste your code here..."></textarea>
+      <div class="toolbar">
+        <select id="lang">
+          <option value="lua">Lua / Luau</option>
+          <option value="python">Python</option>
+          <option value="javascript">JavaScript</option>
+          <option value="json">JSON</option>
+        </select>
+        <button onclick="loadSample()">Sample</button>
+        <button onclick="clearAll()">Clear</button>
+      </div>
     </div>
 
-    <script src="lua-parser.js"></script>
-    <script src="app.js"></script>
+    <!-- OUTPUT -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-label"><span class="dot" id="out-dot"></span> Output</span>
+        <span class="badge" id="action-badge" style="display:none;background:rgba(61,220,132,0.12);color:var(--positive);">beautified</span>
+      </div>
+      <textarea class="code-area" id="output" spellcheck="false" readonly placeholder="-- Beautiful code appears here..."></textarea>
+      <div class="toolbar">
+        <button class="primary" onclick="beautify()">✨ Beautify & Fix</button>
+        <button onclick="copyOut()">Copy</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="status-bar" id="status"></div>
+
+  <div class="issues-box" id="issues-box">
+    <div class="issues-title">Changes & fixes applied</div>
+    <div id="issues-list"></div>
+  </div>
+
+  <div class="footer">zurai02-Assistant — crafted for clean code everywhere</div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   zurai02-Assistant — Universal Code Beautifier Engine
+   ═══════════════════════════════════════════════════════════════ */
+
+const $ = id => document.getElementById(id);
+const inputEl = $('input'), outputEl = $('output'), langEl = $('lang');
+const inDot = $('in-dot'), outDot = $('out-dot'), statusEl = $('status');
+const issuesBox = $('issues-box'), issuesList = $('issues-list');
+const langBadge = $('lang-badge'), actionBadge = $('action-badge');
+
+langEl.addEventListener('change', () => { langBadge.textContent = langEl.value; });
+inputEl.addEventListener('input', () => { inDot.classList.add('active'); outDot.classList.remove('active'); });
+
+function setStatus(msg, ok) {
+  statusEl.textContent = msg;
+  statusEl.className = 'status-bar' + (ok ? ' ok' : '');
+}
+
+function addIssue(text, fixed) {
+  const d = document.createElement('div');
+  d.className = 'issue' + (fixed ? ' fixed' : '');
+  d.textContent = text;
+  issuesList.appendChild(d);
+}
+
+/* ─────────── Lua / Luau Beautifier ─────────── */
+function beautifyLua(src) {
+  const issues = [];
+  let out = src.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+  // spacing after commas
+  const beforeComma = out;
+  out = out.replace(/,(\S)/g, ', $1');
+  if (beforeComma !== out) issues.push('Added spaces after commas');
+
+  // operator spacing
+  const beforeOp = out;
+  out = out.replace(/([^\s=~<>+\-*/%\.])((?:==|~=|<=|>=|\.{2}|\/\/|[=+\-*/%<>]))/g, '$1 $2');
+  out = out.replace(/((?:==|~=|<=|>=|\.{2}|\/\/|[=+\-*/%<>]))([^\s=~<>+\-*/%\.])/g, '$1 $2');
+  out = out.replace(/\s+/g, ' ').replace(/\n /g, '\n').replace(/ \n/g, '\n');
+  if (beforeOp !== out) issues.push('Normalized operator spacing');
+
+  // function params
+  const beforeFn = out;
+  out = out.replace(/function\s+([\w_]+)\s*\(\s*/g, 'function $1(');
+  out = out.replace(/function\s*\(\s*/g, 'function (');
+  out = out.replace(/\(\s+/g, '(').replace(/\s+\)/g, ')');
+  if (beforeFn !== out) issues.push('Fixed function parameter spacing');
+
+  // keywords
+  out = out.replace(/\blocal\b/g, 'local');
+  out = out.replace(/\blocal\s+/g, 'local ');
+  out = out.replace(/\bthen\b/g, ' then');
+  out = out.replace(/\bend\b/g, 'end');
+  out = out.replace(/\bdo\b/g, ' do');
+  out = out.replace(/\belse\b/g, 'else');
+  out = out.replace(/\belseif\b/g, 'elseif');
+  out = out.replace(/\breturn\b/g, 'return');
+  out = out.replace(/\bprint\b/g, 'print');
+
+  // indent
+  const lines = out.split('\n');
+  const formatted = [];
+  let indent = 0;
+  const IND = '    ';
+  const openBlock = /\b(function|if|for|while|repeat|else|elseif)\b/;
+  const oneLineIf = /\bif\b.*\bthen\b.*\bend\b/;
+
+  for (let raw of lines) {
+    let line = raw.trim();
+    if (!line) { formatted.push(''); continue; }
+    if (/^end\b/.test(line) || /^until\b/.test(line) || /^else\b/.test(line) || /^elseif\b/.test(line))
+      indent = Math.max(0, indent - 1);
+    formatted.push(IND.repeat(indent) + line);
+    if (openBlock.test(line) && !oneLineIf.test(line)) indent++;
+  }
+  issues.push('Fixed indentation (4 spaces)');
+
+  // table formatting
+  let code = formatted.join('\n');
+  const beforeTbl = code;
+  code = code.replace(/\{\s+/g, '{ ');
+  code = code.replace(/\s+\}/g, ' }');
+  code = code.replace(/=\s+/g, '= ');
+  if (beforeTbl !== code) issues.push('Normalized table formatting');
+
+  return { code, issues };
+}
+
+/* ─────────── Python Beautifier ─────────── */
+function beautifyPython(src) {
+  const issues = [];
+  let out = src.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+  const before = out;
+  const ops = [
+    [/,(\S)/g, ', $1'],
+    [/:\s*/g, ':'], [/:(\S)/g, ': $1'],
+    [/\s*=\s*/g, ' = '], [/\s*==\s*/g, ' == '],
+    [/\s*!=\s*/g, ' != '], [/\s*>=\s*/g, ' >= '],
+    [/\s*<=\s*/g, ' <= '], [/\s*>\s*/g, ' > '],
+    [/\s*<\s*/g, ' < '], [/\s*\+\s*/g, ' + '],
+    [/\s*-\s*/g, ' - '], [/\s*\*\s*/g, ' * '],
+    [/\s*\/\s*/g, ' / '], [/\s*%\s*/g, ' % '],
+    [/\s*\*\*\s*/g, ' ** '], [/\s*\/\/\s*/g, ' // '],
+    [/\s*and\s*/g, ' and '], [/\s*or\s*/g, ' or '],
+    [/\s*not\s*/g, ' not '], [/\s*in\s*/g, ' in '],
+    [/\s*is\s*/g, ' is '], [/\s*if\s*/g, ' if '],
+    [/\s*else\s*/g, ' else '], [/\s*elif\s*/g, ' elif '],
+    [/\s*for\s*/g, ' for '], [/\s*while\s*/g, ' while '],
+    [/\s*return\s*/g, ' return '], [/\s*def\s+/g, 'def '],
+    [/\s*class\s+/g, 'class '], [/\s*import\s+/g, 'import '],
+    [/\s*from\s+/g, 'from '], [/\s*print\s*\(/g, 'print('],
+  ];
+  ops.forEach(([re, rep]) => { out = out.replace(re, rep); });
+  out = out.replace(/\s{2,}/g, ' ');
+  out = out.replace(/\n /g, '\n').replace(/ \n/g, '\n');
+  if (before !== out) issues.push('Normalized operator and keyword spacing');
+
+  const lines = out.split('\n');
+  const formatted = [];
+  let indent = 0;
+  const IND = '    ';
+  for (let raw of lines) {
+    let line = raw.trim();
+    if (!line) { formatted.push(''); continue; }
+    if (/^(elif|else:)/.test(line)) indent = Math.max(0, indent - 1);
+    formatted.push(IND.repeat(indent) + line);
+    if (/:$/.test(line) && !/^\s*#/.test(line)) indent++;
+  }
+  issues.push('Fixed indentation (4 spaces)');
+
+  let code = formatted.join('\n');
+  code = code.replace(/\n{3,}/g, '\n\n');
+  issues.push('Normalized blank lines');
+  return { code, issues };
+}
+
+/* ─────────── JavaScript Beautifier ─────────── */
+function beautifyJS(src) {
+  const issues = [];
+  let out = src.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+  const before = out;
+  const ops = [
+    [/,(\S)/g, ', $1'],
+    [/\s*=\s*/g, ' = '], [/\s*==\s*/g, ' == '],
+    [/\s*===\s*/g, ' === '], [/\s*!=\s*/g, ' != '],
+    [/\s*!==\s*/g, ' !== '], [/\s*>=\s*/g, ' >= '],
+    [/\s*<=\s*/g, ' <= '], [/\s*>\s*/g, ' > '],
+    [/\s*<\s*/g, ' < '], [/\s*\+\s*/g, ' + '],
+    [/\s*-\s*/g, ' - '], [/\s*\*\s*/g, ' * '],
+    [/\s*\/\s*/g, ' / '], [/\s*%\s*/g, ' % '],
+    [/\s*&&\s*/g, ' && '], [/\s*\|\|\s*/g, ' || '],
+    [/\s*\?\s*/g, ' ? '], [/\s*:\s*/g, ' : '],
+    [/\s*=>\s*/g, ' => '],
+  ];
+  ops.forEach(([re, rep]) => { out = out.replace(re, rep); });
+  out = out.replace(/\s*\+\+\s*/g, '++').replace(/\s*--\s*/g, '--');
+  out = out.replace(/\s{2,}/g, ' ');
+  out = out.replace(/\n /g, '\n').replace(/ \n/g, '\n');
+  if (before !== out) issues.push('Normalized operator spacing');
+
+  const lines = out.split('\n');
+  const formatted = [];
+  let indent = 0;
+  const IND = '    ';
+  for (let raw of lines) {
+    let line = raw.trim();
+    if (!line) { formatted.push(''); continue; }
+    if (/^[}\]]/.test(line)) indent = Math.max(0, indent - 1);
+    formatted.push(IND.repeat(indent) + line);
+    if (/[\{\[]$/.test(line) || /\{$/.test(line)) indent++;
+  }
+  issues.push('Fixed indentation (4 spaces)');
+
+  let code = formatted.join('\n');
+  code = code.replace(/\n{3,}/g, '\n\n');
+  return { code, issues };
+}
+
+/* ─────────── JSON Beautifier ─────────── */
+function beautifyJSON(src) {
+  const issues = [];
+  try {
+    const obj = JSON.parse(src);
+    const code = JSON.stringify(obj, null, 4);
+    issues.push('Validated JSON syntax');
+    issues.push('Applied 4-space indentation');
+    return { code, issues };
+  } catch(e) {
+    return { code: src, issues: ['JSON parse error: ' + e.message] };
+  }
+}
+
+/* ─────────── UI Actions ─────────── */
+function beautify() {
+  const src = inputEl.value;
+  if (!src.trim()) { setStatus('Paste some code first.', false); return; }
+  const lang = langEl.value;
+  let result;
+  if (lang === 'lua') result = beautifyLua(src);
+  else if (lang === 'python') result = beautifyPython(src);
+  else if (lang === 'javascript') result = beautifyJS(src);
+  else if (lang === 'json') result = beautifyJSON(src);
+  else result = { code: src, issues: ['Language not supported yet'] };
+
+  outputEl.value = result.code;
+  outDot.classList.add('active');
+  actionBadge.style.display = 'inline-block';
+
+  issuesList.innerHTML = '';
+  if (result.issues.length) {
+    issuesBox.classList.add('show');
+    result.issues.forEach(i => addIssue(i, true));
+  } else {
+    issuesBox.classList.remove('show');
+  }
+  setStatus(`Beautified ${lang} — ${result.issues.length} fix(es) applied.`, true);
+}
+
+function copyOut() {
+  if (!outputEl.value) return;
+  navigator.clipboard.writeText(outputEl.value)
+    .then(() => setStatus('Copied to clipboard!', true))
+    .catch(() => setStatus('Copy failed. Select and copy manually.', false));
+}
+
+function clearAll() {
+  inputEl.value = '';
+  outputEl.value = '';
+  issuesList.innerHTML = '';
+  issuesBox.classList.remove('show');
+  inDot.classList.remove('active');
+  outDot.classList.remove('active');
+  actionBadge.style.display = 'none';
+  setStatus('Cleared.', false);
+}
+
+function loadSample() {
+  const lang = langEl.value;
+  let sample = '';
+  if (lang === 'lua') {
+    sample = `local function calculateArea(width,height)
+local area=width*height
+if area > 0 then
+print("Area is: "..area)
+else
+print("Invalid dimensions")
+end
+return area
+end
+myTable={name="Test",val=100}
+for i=1,3 do print(i,myTable.val) end`;
+  } else if (lang === 'python') {
+    sample = `def calculate_area(width,height):
+area=width*height
+if area>0:
+print("Area is: "+str(area))
+else:
+print("Invalid dimensions")
+return area
+my_dict={"name":"Test","val":100}
+for i in range(1,4):
+print(i,my_dict["val"])`;
+  } else if (lang === 'javascript') {
+    sample = `function calculateArea(width,height){
+var area=width*height;
+if(area>0){
+console.log("Area is: "+area);
+}else{
+console.log("Invalid dimensions");
+}
+return area;
+}
+var obj={name:"Test",val:100};
+for(var i=1;i<=3;i++){console.log(i,obj.val);}`;
+  } else if (lang === 'json') {
+    sample = '{"name":"Test","values":[1,2,3],"nested":{"a":1,"b":2}}';
+  }
+  inputEl.value = sample;
+  inDot.classList.add('active');
+  setStatus('Sample loaded. Click Beautify & Fix.', false);
+}
+
+// Init
+loadSample();
+</script>
+
 </body>
 </html>
