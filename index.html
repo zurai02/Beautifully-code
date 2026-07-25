@@ -1,343 +1,115 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ClaudeCode — Universal AI Beautifier & Deobfuscator</title>
-  <link rel="stylesheet" href="style.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
-<base target="_blank">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Code Beautifier & Debugger</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="app">
-    <!-- Header -->
-    <header class="header">
-      <div class="brand">
-        <div class="brand-icon">◈</div>
-        <div class="brand-text">
-          <h1>ClaudeCode</h1>
-          <span>Universal AI Beautifier & Deobfuscator</span>
-        </div>
-      </div>
-      <nav class="header-actions">
-        <button class="btn btn-ghost" onclick="loadSample()">📋 Load Sample</button>
-        <button class="btn btn-ghost" onclick="clearAll()">🗑 Clear</button>
-        <button class="btn btn-accent" onclick="processCode()">✨ Beautify & Fix</button>
-        <button class="btn btn-ghost" onclick="deobfuscate()">🔓 Deobfuscate</button>
-        <button class="btn btn-ghost" onclick="minify()">📦 Minify</button>
-        <button class="btn btn-ghost" onclick="exportCode()">💾 Export</button>
-      </nav>
-    </header>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <h1>🤖 AI Code Beautifier & Debugger</h1>
+                <p>Paste your code. Get AI-powered analysis, formatting, and fixes.</p>
+            </div>
+        </header>
 
-    <!-- Main Layout -->
-    <div class="main">
-      <!-- Sidebar -->
-      <aside class="sidebar">
-        <section class="panel">
-          <h3 class="panel-title">Language</h3>
-          <div class="lang-grid">
-            <button class="lang-btn active" data-lang="javascript" onclick="setLang('javascript')">JavaScript</button>
-            <button class="lang-btn" data-lang="typescript" onclick="setLang('typescript')">TypeScript</button>
-            <button class="lang-btn" data-lang="lua" onclick="setLang('lua')">Lua</button>
-            <button class="lang-btn" data-lang="luau" onclick="setLang('luau')">Luau</button>
-            <button class="lang-btn" data-lang="wat" onclick="setLang('wat')">WAT</button>
-            <button class="lang-btn" data-lang="wasm" onclick="setLang('wasm')">WASM</button>
-            <button class="lang-btn" data-lang="html" onclick="setLang('html')">HTML</button>
-            <button class="lang-btn" data-lang="css" onclick="setLang('css')">CSS</button>
-            <button class="lang-btn" data-lang="scss" onclick="setLang('scss')">SCSS</button>
-            <button class="lang-btn" data-lang="json" onclick="setLang('json')">JSON</button>
-            <button class="lang-btn" data-lang="python" onclick="setLang('python')">Python</button>
-            <button class="lang-btn" data-lang="sql" onclick="setLang('sql')">SQL</button>
-          </div>
-        </section>
-
-        <section class="panel">
-          <h3 class="panel-title">AI Engine</h3>
-          <div class="feature-list">
-            <label class="feature-item">
-              <input type="checkbox" checked onchange="toggleFeature('beautify')">
-              <span class="feature-check"></span>
-              <span class="feature-label">Auto Beautify</span>
-            </label>
-            <label class="feature-item">
-              <input type="checkbox" checked onchange="toggleFeature('lint')">
-              <span class="feature-check"></span>
-              <span class="feature-label">Syntax Fix & Lint</span>
-            </label>
-            <label class="feature-item">
-              <input type="checkbox" onchange="toggleFeature('deob')">
-              <span class="feature-check"></span>
-              <span class="feature-label">Deobfuscate</span>
-            </label>
-            <label class="feature-item">
-              <input type="checkbox" onchange="toggleFeature('minify')">
-              <span class="feature-check"></span>
-              <span class="feature-label">Minify Output</span>
-            </label>
-            <label class="feature-item">
-              <input type="checkbox" onchange="toggleFeature('wasmCompile')">
-              <span class="feature-check"></span>
-              <span class="feature-label">Compile to WASM</span>
-            </label>
-            <label class="feature-item">
-              <input type="checkbox" checked onchange="toggleFeature('aiExplain')">
-              <span class="feature-check"></span>
-              <span class="feature-label">AI Explanation</span>
-            </label>
-          </div>
-        </section>
-
-        <section class="panel">
-          <h3 class="panel-title">Statistics</h3>
-          <div class="stats-grid">
-            <div class="stat-card">
-              <div class="stat-value" id="stat-lines">0</div>
-              <div class="stat-label">Lines</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-value" id="stat-chars">0</div>
-              <div class="stat-label">Characters</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-value" id="stat-tokens">0</div>
-              <div class="stat-label">Tokens</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-value" id="stat-issues">0</div>
-              <div class="stat-label">Issues Fixed</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-value" id="stat-time">0ms</div>
-              <div class="stat-label">Process Time</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-value" id="stat-complexity">N/A</div>
-              <div class="stat-label">Complexity</div>
-            </div>
-          </div>
-        </section>
-
-        <section class="panel panel-grow">
-          <h3 class="panel-title">Learning Engine</h3>
-          <div class="learning-status">
-            <div class="learning-dot online"></div>
-            <span>Neural heuristic engine active</span>
-          </div>
-          <div class="learning-log" id="learningLog">
-            <div class="log-entry">🧠 Pattern matcher initialized</div>
-            <div class="log-entry">📚 Loaded 12 language grammars</div>
-            <div class="log-entry">🔍 Deobfuscation heuristics ready</div>
-          </div>
-        </section>
-      </aside>
-
-      <!-- Editor Area -->
-      <div class="editor-area">
-        <!-- Tabs -->
-        <div class="tabs-bar">
-          <button class="tab active" data-tab="editor" onclick="switchTab('editor')">
-            <span class="tab-icon">📝</span> Editor
-          </button>
-          <button class="tab" data-tab="output" onclick="switchTab('output')">
-            <span class="tab-icon">✨</span> Beautified
-          </button>
-          <button class="tab" data-tab="wat" onclick="switchTab('wat')">
-            <span class="tab-icon">⚙️</span> WAT View
-          </button>
-          <button class="tab" data-tab="wasm" onclick="switchTab('wasm')">
-            <span class="tab-icon wasm-badge">WASM</span> Binary
-          </button>
-          <button class="tab" data-tab="ast" onclick="switchTab('ast')">
-            <span class="tab-icon">🌳</span> AST Tree
-          </button>
-          <button class="tab" data-tab="diff" onclick="switchTab('diff')">
-            <span class="tab-icon">🔍</span> Diff
-          </button>
-        </div>
-
-        <!-- Editor Panes -->
-        <div class="panes-container">
-          <!-- Input Pane -->
-          <div class="pane pane-input" id="pane-editor">
-            <div class="pane-toolbar">
-              <span class="pane-label">Source Input</span>
-              <div class="pane-tools">
-                <button onclick="pasteFromClipboard()" title="Paste">📋</button>
-                <button onclick="copyInput()" title="Copy">📄</button>
-                <button onclick="formatInput()" title="Quick Format">🔧</button>
-              </div>
-            </div>
-            <textarea 
-              class="code-editor" 
-              id="input" 
-              placeholder="// Paste your messy, obfuscated, or broken code here...
-// Supports: JavaScript, TypeScript, Lua, Luau, WAT, WASM, HTML, CSS, SCSS, JSON, Python, SQL
-// The AI will beautify, fix syntax errors, deobfuscate, and explain changes.
-
-// Try dropping a file anywhere on this page!"
-              spellcheck="false"
-              autocapitalize="off"
-              autocomplete="off"
-              autocorrect="off"
-            ></textarea>
-            <div class="pane-footer">
-              <span id="input-info">UTF-8 | LF</span>
-              <span id="cursor-pos">Ln 1, Col 1</span>
-            </div>
-          </div>
-
-          <!-- Output Pane -->
-          <div class="pane pane-output" id="pane-output">
-            <div class="pane-toolbar">
-              <span class="pane-label">Beautified Output</span>
-              <div class="pane-tools">
-                <button onclick="copyOutput()" title="Copy">📄</button>
-                <button onclick="downloadOutput()" title="Download">💾</button>
-                <button onclick="runCode()" title="Run" id="runBtn">▶ Run</button>
-              </div>
-            </div>
-            <pre class="code-display" id="output"><code class="language-javascript">// Your beautified code will appear here...
-// Click "Beautify & Fix" to transform your code.
-// The AI engine analyzes patterns, fixes syntax, and applies best practices.</code></pre>
-            <div class="pane-footer">
-              <span id="output-lang">JavaScript</span>
-              <span id="output-info">Ready</span>
-            </div>
-          </div>
-
-          <!-- WAT Pane -->
-          <div class="pane pane-hidden" id="pane-wat">
-            <div class="pane-toolbar">
-              <span class="pane-label">WebAssembly Text (WAT)</span>
-            </div>
-            <pre class="code-display" id="wat-output"><code>;; WAT representation will appear here when you compile to WASM
-;; (module
-;;   (func $add (param $a i32) (param $b i32) (result i32)
-;;     local.get $a
-;;     local.get $b
-;;     i32.add)
-;;   (export "add" (func $add)))</code></pre>
-          </div>
-
-          <!-- WASM Pane -->
-          <div class="pane pane-hidden" id="pane-wasm">
-            <div class="pane-toolbar">
-              <span class="pane-label">WASM Binary (Hex View)</span>
-            </div>
-            <pre class="code-display hex" id="wasm-output"><code>00 61 73 6d 01 00 00 00  ;; WASM magic + version
-;; Compile your code to see binary output</code></pre>
-          </div>
-
-          <!-- AST Pane -->
-          <div class="pane pane-hidden" id="pane-ast">
-            <div class="pane-toolbar">
-              <span class="pane-label">Abstract Syntax Tree</span>
-            </div>
-            <div class="ast-tree" id="ast-output">
-              <div class="ast-node">
-                <span class="ast-type">Program</span>
-                <div class="ast-children">
-                  <div class="ast-node">
-                    <span class="ast-type">ExpressionStatement</span>
-                    <div class="ast-children">
-                      <div class="ast-node leaf">
-                        <span class="ast-type">Literal</span>
-                        <span class="ast-value">"Paste code to generate AST"</span>
-                      </div>
+        <main class="main-grid">
+            <!-- Input Section -->
+            <section class="input-section">
+                <div class="section-header">
+                    <h2>📝 Input Code</h2>
+                    <div class="language-selector">
+                        <label>Language:</label>
+                        <select id="languageSelect">
+                            <option value="javascript">JavaScript</option>
+                            <option value="python">Python</option>
+                            <option value="lua">Lua</option>
+                            <option value="html">HTML</option>
+                            <option value="css">CSS</option>
+                            <option value="json">JSON</option>
+                            <option value="sql">SQL</option>
+                            <option value="plaintext">Plain Text</option>
+                        </select>
                     </div>
-                  </div>
                 </div>
-              </div>
-            </div>
-          </div>
+                <textarea id="codeInput" placeholder="Paste your code here..."></textarea>
+                <div class="input-actions">
+                    <button id="beautifyBtn" class="btn btn-primary">✨ Beautify</button>
+                    <button id="analyzeBtn" class="btn btn-secondary">🔍 Analyze with AI</button>
+                    <button id="clearBtn" class="btn btn-tertiary">🗑️ Clear</button>
+                </div>
+            </section>
 
-          <!-- Diff Pane -->
-          <div class="pane pane-hidden" id="pane-diff">
-            <div class="pane-toolbar">
-              <span class="pane-label">Diff View</span>
-            </div>
-            <div class="diff-view" id="diff-output">
-              <div class="diff-hint">Process code to see before/after comparison</div>
-            </div>
-          </div>
+            <!-- Output Section -->
+            <section class="output-section">
+                <div class="section-header">
+                    <h2>✨ Formatted Code</h2>
+                    <button id="copyBtn" class="btn btn-small">📋 Copy</button>
+                </div>
+                <pre id="codeOutput" class="code-display">
+<code id="codeHighlight" class="language-javascript">// Your beautified code will appear here</code>
+                </pre>
+            </section>
+
+            <!-- AI Analysis Section -->
+            <section class="analysis-section">
+                <div class="section-header">
+                    <h2>🤖 AI Analysis</h2>
+                </div>
+                <div id="analysisContainer" class="analysis-container">
+                    <div class="placeholder">
+                        <p>Click "Analyze with AI" to get intelligent code review and suggestions</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Issues & Fixes -->
+            <section class="issues-section">
+                <div class="section-header">
+                    <h2>⚠️ Issues Found</h2>
+                </div>
+                <div id="issuesContainer" class="issues-container">
+                    <div class="placeholder">
+                        <p>No issues detected. Your code looks good!</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Learning Panel -->
+            <section class="learning-section">
+                <div class="section-header">
+                    <h2>📚 Learning Hub</h2>
+                </div>
+                <div id="learningContainer" class="learning-container">
+                    <div class="learning-item">
+                        <h3>Tips & Tricks</h3>
+                        <p>Learn best practices as you code</p>
+                    </div>
+                    <div class="learning-item">
+                        <h3>Patterns</h3>
+                        <p>Common patterns from analyzed code</p>
+                    </div>
+                    <div class="learning-item">
+                        <h3>History</h3>
+                        <p>Your recent code analysis history</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Loading Indicator -->
+        <div id="loader" class="loader hidden">
+            <div class="spinner"></div>
+            <p>Analyzing your code...</p>
         </div>
 
-        <!-- Status Bar -->
-        <div class="status-bar">
-          <div class="status-left">
-            <span class="status-indicator" id="status-dot"></span>
-            <span class="status-text" id="status-text">Ready — Universal Engine v3.0 loaded</span>
-          </div>
-          <div class="status-right">
-            <span class="status-item" id="engine-mode">Mode: Beautify + Lint</span>
-            <span class="status-sep">|</span>
-            <span class="status-item">ClaudeCode AI</span>
-          </div>
-        </div>
-      </div>
+        <!-- Notification Toast -->
+        <div id="toast" class="toast"></div>
     </div>
-  </div>
 
-  <!-- AI Chat Panel -->
-  <button class="fab" id="fab" onclick="toggleAI()" aria-label="Open AI Assistant">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
-      <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-      <line x1="12" y1="19" x2="12" y2="23"/>
-      <line x1="8" y1="23" x2="16" y2="23"/>
-    </svg>
-  </button>
-
-  <div class="ai-panel" id="aiPanel">
-    <div class="ai-header">
-      <div class="ai-title">
-        <span class="ai-icon">◈</span>
-        <div>
-          <div class="ai-name">Claude AI Assistant</div>
-          <div class="ai-sub">Code analysis & explanation</div>
-        </div>
-      </div>
-      <button class="ai-close" onclick="toggleAI()" aria-label="Close">×</button>
-    </div>
-    <div class="ai-body" id="aiBody">
-      <div class="ai-message">
-        <div class="ai-avatar">◈</div>
-        <div class="ai-bubble">
-          Hello! I'm your coding assistant. Paste code on the left and I'll beautify it, fix syntax errors, deobfuscate if needed, and explain what I changed. I support JavaScript, Lua, Luau, WAT, HTML, CSS, JSON, Python, and more.
-        </div>
-      </div>
-    </div>
-    <div class="ai-input-area">
-      <input 
-        type="text" 
-        class="ai-input" 
-        id="aiInput" 
-        placeholder="Ask me about your code..."
-        onkeypress="if(event.key==='Enter')sendAI()"
-      >
-      <button class="ai-send" onclick="sendAI()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <line x1="22" y1="2" x2="11" y2="13"/>
-          <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-        </svg>
-      </button>
-    </div>
-  </div>
-
-  <!-- Drop Zone Overlay -->
-  <div class="drop-overlay" id="dropOverlay">
-    <div class="drop-card">
-      <div class="drop-icon">📁</div>
-      <div class="drop-title">Drop your code files here</div>
-      <div class="drop-sub">.js .ts .lua .luau .wat .wasm .html .css .scss .json .py .sql</div>
-    </div>
-  </div>
-
-  <!-- Toast Notifications -->
-  <div class="toast-container" id="toastContainer"></div>
-
-  <script src="app.js"></script>
-  <script src="lua-parser.js"></script>
+    <script src="lua-parser.js"></script>
+    <script src="app.js"></script>
 </body>
-  </html>
+</html>
