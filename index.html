@@ -3,160 +3,723 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Signal — Code Bench &amp; Thumbnail POV Lab</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<title>Luau Toolkit — Formatter & Linter</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface-raised: #1c2128;
+    --border: #30363d;
+    --text-primary: #c9d1d9;
+    --text-secondary: #8b949e;
+    --text-tertiary: #6e7681;
+    --accent: #58a6ff;
+    --accent-soft: rgba(88,166,255,0.15);
+    --positive: #3fb950;
+    --positive-soft: rgba(63,185,80,0.15);
+    --warning: #d29922;
+    --warning-soft: rgba(210,153,34,0.15);
+    --danger: #f85149;
+    --danger-soft: rgba(248,81,73,0.15);
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+    --radius: 10px;
+    --radius-sm: 6px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-sans);
+    background: var(--bg);
+    color: var(--text-primary);
+    line-height: 1.5;
+    min-height: 100vh;
+    padding: 24px;
+  }
+  .container { max-width: 1200px; margin: 0 auto; }
+  header { margin-bottom: 24px; }
+  header h1 { font-size: 20px; font-weight: 500; letter-spacing: 0; }
+  header p { color: var(--text-secondary); font-size: 14px; margin-top: 4px; }
+  .toolbar {
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+    margin-bottom: 16px; padding: 12px 16px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  }
+  .toolbar label { font-size: 13px; color: var(--text-secondary); margin-right: 4px; }
+  .toolbar select, .toolbar input[type="number"] {
+    background: var(--surface-raised); color: var(--text-primary);
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 6px 10px; font-size: 13px; outline: none;
+  }
+  .toolbar input[type="number"] { width: 56px; text-align: center; }
+  .toolbar button {
+    background: var(--surface-raised); color: var(--text-primary);
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 6px 14px; font-size: 13px; cursor: pointer;
+    transition: all 0.15s ease; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .toolbar button:hover { border-color: var(--accent); color: var(--accent); }
+  .toolbar button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .toolbar button.primary:hover { background: #4a9eff; border-color: #4a9eff; }
+  .toolbar .spacer { flex: 1; }
+  .editor-pair {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+  }
+  .panel {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; border-bottom: 1px solid var(--border);
+    font-size: 13px; font-weight: 500; color: var(--text-secondary);
+  }
+  .panel-header .badge {
+    font-size: 11px; padding: 2px 8px; border-radius: 999px;
+    background: var(--accent-soft); color: var(--accent); font-weight: 400;
+  }
+  textarea.code-input {
+    flex: 1; min-height: 420px; resize: vertical;
+    background: transparent; color: var(--text-primary);
+    border: none; outline: none; padding: 14px;
+    font-family: var(--font-mono); font-size: 13.5px; line-height: 1.6;
+    tab-size: 4; white-space: pre;
+  }
+  .code-output {
+    flex: 1; min-height: 420px; padding: 14px;
+    font-family: var(--font-mono); font-size: 13.5px; line-height: 1.6;
+    overflow: auto; white-space: pre; tab-size: 4;
+    background: transparent;
+  }
+  .code-output .kw { color: #ff7b72; }
+  .code-output .str { color: #a5d6ff; }
+  .code-output .num { color: #79c0ff; }
+  .code-output .cmt { color: #8b949e; font-style: italic; }
+  .code-output .fn { color: #d2a8ff; }
+  .code-output .op { color: #ff7b72; }
+  .code-output .lib { color: #ffa657; }
+
+  .lint-panel {
+    margin-top: 16px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+  }
+  .lint-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px; border-bottom: 1px solid var(--border);
+    font-size: 13px; font-weight: 500; color: var(--text-secondary);
+  }
+  .lint-count { display: flex; gap: 12px; }
+  .lint-count span { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; }
+  .lint-count .err { color: var(--danger); }
+  .lint-count .warn { color: var(--warning); }
+  .lint-count .ok { color: var(--positive); }
+  .lint-list { max-height: 260px; overflow: auto; }
+  .lint-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px 14px; border-bottom: 1px solid var(--border);
+    font-size: 13px; cursor: pointer; transition: background 0.1s;
+  }
+  .lint-item:hover { background: var(--surface-raised); }
+  .lint-item:last-child { border-bottom: none; }
+  .lint-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+  .lint-dot.error { background: var(--danger); }
+  .lint-dot.warning { background: var(--warning); }
+  .lint-dot.info { background: var(--accent); }
+  .lint-msg { flex: 1; }
+  .lint-msg .rule { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+  .lint-line { color: var(--text-tertiary); font-size: 12px; font-variant-numeric: tabular-nums; flex-shrink: 0; min-width: 36px; text-align: right; }
+
+  .toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--surface-raised); color: var(--text-primary);
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 10px 16px; font-size: 13px; box-shadow: var(--shadow);
+    opacity: 0; transform: translateY(8px); transition: all 0.25s ease;
+    pointer-events: none; z-index: 100;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  @media (max-width: 860px) {
+    .editor-pair { grid-template-columns: 1fr; }
+    body { padding: 12px; }
+  }
+</style>
+<base target="_blank">
 </head>
 <body>
+<div class="container">
+  <header>
+    <h1>Luau Toolkit</h1>
+    <p>Format, lint, and analyze Luau code for Roblox development</p>
+  </header>
 
-<div class="grain"></div>
-
-<header class="topbar">
-  <div class="brand">
-    <span class="brand-mark">◈</span>
-    <span class="brand-name">SIGNAL</span>
+  <div class="toolbar">
+    <label>Indent:</label>
+    <select id="indentType">
+      <option value="space">Spaces</option>
+      <option value="tab">Tabs</option>
+    </select>
+    <input type="number" id="indentSize" value="4" min="1" max="8">
+    <label style="margin-left:8px">Line width:</label>
+    <input type="number" id="lineWidth" value="120" min="40" max="200">
+    <div class="spacer"></div>
+    <button onclick="loadSample()">Load sample</button>
+    <button onclick="clearAll()">Clear</button>
+    <button class="primary" onclick="runFormat()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:4px"><path d="M14.5605 3.09961C15.5539 3.09968 16.51 3.47933 17.2334 4.16016L19.6729 6.45605C20.4558 7.19299 20.9003 8.22067 20.9004 9.2959V17C20.9004 19.1539 19.1539 20.9004 17 20.9004H11C8.84609 20.9004 7.09961 19.1539 7.09961 17V11C7.09961 8.84609 8.84609 7.09961 11 7.09961H13.4004V4.09961C13.4004 3.54833 13.8474 3.10132 14.3987 3.09964L14.5605 3.09961ZM14.4004 8.69961H11C9.84026 8.69961 8.89961 9.64026 8.89961 10.8V17.2C8.89961 18.3597 9.84026 19.3004 11 19.3004H17C18.1597 19.3004 19.1004 18.3597 19.1004 17.2V10.8C19.1004 9.64026 18.1597 8.69961 17 8.69961H14.4004ZM12.5 11.5C12.5 11.2239 12.7239 11 13 11H15C15.2761 11 15.5 11.2239 15.5 11.5V13.5C15.5 13.7761 15.2761 14 15 14H13C12.7239 14 12.5 13.7761 12.5 13.5V11.5Z" fill="currentColor"/></svg>
+      Format
+    </button>
+    <button onclick="copyOutput()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:4px"><path fill-rule="evenodd" clip-rule="evenodd" d="M17 7.09961C19.1539 7.09961 20.9004 8.84609 20.9004 11V17C20.9004 19.1539 19.1539 20.9004 17 20.9004H11C8.84609 20.9004 7.09961 19.1539 7.09961 17V11C7.09961 8.84609 8.84609 7.09961 11 7.09961H13.4004V5.59961C13.4004 4.27353 14.4743 3.19961 15.8004 3.19961H17.2004C17.7532 3.19961 18.2022 3.64859 18.2022 4.20139C18.2022 4.75419 17.7532 5.20317 17.2004 5.20317H15.8004C15.5802 5.20317 15.4022 5.38113 15.4022 5.60134V7.09961H17ZM11 8.89961C9.84026 8.89961 8.89961 9.84026 8.89961 11V17C8.89961 18.1597 9.84026 19.1004 11 19.1004H17C18.1597 19.1004 19.1004 18.1597 19.1004 17V11C19.1004 9.84026 18.1597 8.89961 17 8.89961H11Z" fill="currentColor"/></svg>
+      Copy
+    </button>
+    <button onclick="downloadOutput()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:4px"><path d="M12.9004 3.09961V13.2422L16.7129 9.42969C17.0058 9.13679 17.4807 9.13679 17.7736 9.42969C18.0665 9.72258 18.0665 10.1974 17.7736 10.4903L12.5304 15.7334C12.2375 16.0263 11.7627 16.0263 11.4698 15.7334L6.22669 10.4903C5.9338 10.1974 5.9338 9.72258 6.22669 9.42969C6.51959 9.13679 6.99442 9.13679 7.28732 9.42969L11.0996 13.2422V3.09961C11.0996 2.60255 11.5026 2.19961 11.9996 2.19961C12.4967 2.19961 12.8996 2.60255 12.8996 3.09961H12.9004ZM3.09961 16.8008C3.09961 16.3037 3.50255 15.9008 3.99961 15.9008H8.19961C8.69667 15.9008 9.09961 16.3037 9.09961 16.8008C9.09961 17.2978 8.69667 17.7008 8.19961 17.7008H4.89961V20.1008H19.0996V17.7008H15.7996C15.3026 17.7008 14.8996 17.2978 14.8996 16.8008C14.8996 16.3037 15.3026 15.9008 15.7996 15.9008H19.9996C20.4967 15.9008 20.8996 16.3037 20.8996 16.8008V20.1008C20.8996 20.5978 20.4967 21.0008 19.9996 21.0008H3.99961C3.50255 21.0008 3.09961 20.5978 3.09961 20.1008V16.8008Z" fill="currentColor"/></svg>
+      Download
+    </button>
   </div>
-  <nav class="modeswitch" id="modeswitch">
-    <button class="mode-btn active" data-mode="pov">Thumbnail POV</button>
-    <button class="mode-btn" data-mode="code">Code Bench</button>
-  </nav>
-</header>
 
-<!-- ============ THUMBNAIL POV LAB ============ -->
-<main class="stage" id="pov-mode">
-
-  <section class="hero">
-    <h1>See it the way <em>they</em> will.</h1>
-    <p class="hero-sub">You designed this thumbnail full-size, in good light, staring right at it. Nobody else ever will. Drop it in and watch it survive contact with real eyeballs.</p>
-  </section>
-
-  <section class="uploader" id="dropzone">
-    <input type="file" id="fileInput" accept="image/*" hidden>
-    <div class="dropzone-inner" id="dropzoneInner">
-      <span class="dz-icon">＋</span>
-      <p><strong>Drop a thumbnail</strong> or click to browse</p>
-      <span class="dz-hint">JPG · PNG · WEBP — stays on your device</span>
+  <div class="editor-pair">
+    <div class="panel">
+      <div class="panel-header">
+        <span>Input</span>
+        <span class="badge" id="inputBadge">0 lines</span>
+      </div>
+      <textarea class="code-input" id="input" placeholder="-- Paste your Luau code here...
+local function example()
+    print("hello")
+end" spellcheck="false"></textarea>
     </div>
-  </section>
+    <div class="panel">
+      <div class="panel-header">
+        <span>Output</span>
+        <span class="badge" id="outputBadge">0 lines</span>
+      </div>
+      <div class="code-output" id="output"><span style="color:var(--text-tertiary)">-- Formatted output will appear here</span></div>
+    </div>
+  </div>
 
-  <section class="lab hidden" id="lab">
+  <div class="lint-panel">
+    <div class="lint-header">
+      <span>Diagnostics</span>
+      <div class="lint-count">
+        <span class="err" id="errCount">● 0 errors</span>
+        <span class="warn" id="warnCount">● 0 warnings</span>
+        <span class="ok" id="okCount">● 0 info</span>
+      </div>
+    </div>
+    <div class="lint-list" id="lintList">
+      <div class="lint-item" style="color:var(--text-tertiary)">
+        <div style="padding:8px 0">No diagnostics yet. Paste code and click Format to analyze.</div>
+      </div>
+    </div>
+  </div>
+</div>
 
-    <!-- Signature: the scroll-by strip -->
-    <div class="scrollrig">
-      <div class="scrollrig-head">
-        <div>
-          <span class="eyebrow">Signature test</span>
-          <h2>The scroll-by</h2>
-          <p class="rig-desc">Most people meet your thumbnail for about a third of a second, mid-flick, on a phone. This is that moment.</p>
+<div class="toast" id="toast">Copied to clipboard</div>
+
+<script>
+// ========================
+// Luau Formatter
+// ========================
+function formatLuau(code, opts) {
+  opts = opts || { indentSize: 4, useTabs: false, lineWidth: 120 };
+  const indentStr = opts.useTabs ? "\t" : " ".repeat(opts.indentSize);
+  const lines = code.split("\n");
+  const out = [];
+  let indent = 0;
+
+  // Tokenize each line for better handling
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i];
+    const raw = line;
+    let stripped = line.trim();
+
+    // Preserve empty lines
+    if (!stripped) {
+      out.push("");
+      continue;
+    }
+
+    // Preserve standalone comments
+    if (stripped.startsWith("--")) {
+      out.push(indentStr.repeat(Math.max(0, indent)) + stripped);
+      continue;
+    }
+
+    // Check for block closers (decrease indent)
+    const closers = ["end", "elseif", "else", "until"];
+    const startsWithCloser = closers.some(c => stripped.startsWith(c + " ") || stripped === c);
+    if (startsWithCloser) {
+      indent = Math.max(0, indent - 1);
+    }
+    if (stripped.startsWith("}") && !stripped.includes("{")) {
+      indent = Math.max(0, indent - 1);
+    }
+
+    // Basic spacing around operators (outside strings/comments)
+    let formatted = stripped;
+
+    // Space after commas
+    formatted = formatted.replace(/,(?![\s])/g, ", ");
+    formatted = formatted.replace(/,\s{2,}/g, ", ");
+
+    // Space around binary operators (basic, not in strings)
+    const ops = ["==", "~=", "<=", ">=", "..", "+", "-", "*", "/", "%", "^"];
+    // Simple approach: replace operators with spaced versions, then fix double spaces
+    // Be careful with minus sign in negative numbers
+    for (const op of ops) {
+      const regex = new RegExp("(\S?)" + escapeRegex(op) + "(\S?)", "g");
+      formatted = formatted.replace(regex, (m, before, after) => {
+        // Don't space if it's part of a negative number or comment
+        if (op === "-" && (before === "" || before === "(" || before === "," || before === "=")) return m;
+        if (op === "*" && before === ".") return m; // method call
+        return before + " " + op + " " + after;
+      });
+    }
+    // Fix double spaces
+    formatted = formatted.replace(/\s{2,}/g, " ");
+    // Fix space before comma
+    formatted = formatted.replace(/\s+,/g, ",");
+    // Fix space after opening paren and before closing paren
+    formatted = formatted.replace(/\(\s+/g, "(");
+    formatted = formatted.replace(/\s+\)/g, ")");
+    // Fix space after opening bracket and before closing bracket
+    formatted = formatted.replace(/\[\s+/g, "[");
+    formatted = formatted.replace(/\s+\]/g, "]");
+    // Fix space after opening brace and before closing brace
+    formatted = formatted.replace(/\{\s+/g, "{");
+    formatted = formatted.replace(/\s+\}/g, "}");
+    // Fix method call spacing: obj : method -> obj:method
+    formatted = formatted.replace(/\s*:\s*/g, ":");
+    // Fix dot access spacing
+    formatted = formatted.replace(/\s*\.\s*/g, ".");
+    // Fix double dot (..) spacing
+    formatted = formatted.replace(/\.\s*\./g, "..");
+    // Fix triple equals
+    formatted = formatted.replace(/=\s*=\s*=/g, "===");
+    formatted = formatted.replace(/=\s*=/g, "==");
+    formatted = formatted.replace(/~\s*=/g, "~=");
+    formatted = formatted.replace(/<\s*=/g, "<=");
+    formatted = formatted.replace(/>\s*=/g, ">=");
+
+    // Apply indent
+    out.push(indentStr.repeat(Math.max(0, indent)) + formatted);
+
+    // Check for block openers (increase indent)
+    const openers = ["function", "local function", "if", "elseif", "for", "while", "repeat"];
+    let opens = 0;
+    let closes = 0;
+
+    // Count block opens
+    const lower = stripped.toLowerCase();
+    if (lower.startsWith("function ") || lower.startsWith("local function ")) opens++;
+    if (lower.startsWith("if ") && stripped.endsWith("then")) opens++;
+    if (lower.startsWith("elseif ") && stripped.endsWith("then")) opens++;
+    if (lower.startsWith("for ") && stripped.endsWith("do")) opens++;
+    if (lower.startsWith("while ") && stripped.endsWith("do")) opens++;
+    if (lower.startsWith("repeat")) opens++;
+
+    // Count braces
+    const openBraces = (stripped.match(/{/g) || []).length;
+    const closeBraces = (stripped.match(/}/g) || []).length;
+    opens += openBraces;
+    closes += closeBraces;
+
+    // Count "do" and "then" that aren't already counted
+    if (stripped.endsWith("do") && !lower.startsWith("for ") && !lower.startsWith("while ")) opens++;
+    if (stripped.endsWith("then") && !lower.startsWith("if ") && !lower.startsWith("elseif ")) opens++;
+
+    // Count closers on this line
+    if (stripped.startsWith("end") || stripped === "end") closes++;
+    if (stripped.startsWith("until ") || stripped === "until") closes++;
+    if (stripped.endsWith("end") && !stripped.startsWith("end")) {
+      const endCount = (stripped.match(/\bend\b/g) || []).length;
+      closes += endCount;
+    }
+
+    // One-liner detection: if opens and closes are roughly balanced on same line
+    if (opens > 0 && closes > 0) {
+      // Check if it's a true one-liner
+      const thenCount = (stripped.match(/\bthen\b/g) || []).length;
+      const endCount = (stripped.match(/\bend\b/g) || []).length;
+      const doCount = (stripped.match(/\bdo\b/g) || []).length;
+      if (thenCount === endCount && thenCount > 0) {
+        // One-liner if-then-end: don't change indent
+      } else if (doCount === endCount && doCount > 0) {
+        // One-liner do-end: don't change indent
+      } else {
+        indent += opens - closes;
+      }
+    } else {
+      indent += opens;
+      indent -= closes;
+    }
+    indent = Math.max(0, indent);
+  }
+
+  return out.join("\n");
+}
+
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// ========================
+// Luau Linter
+// ========================
+function lintLuau(code) {
+  const diagnostics = [];
+  const lines = code.split("\n");
+
+  // Track state
+  let inFunction = false;
+  let functionDepth = 0;
+  let loopDepth = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const stripped = line.trim();
+    const lineNum = i + 1;
+
+    if (!stripped || stripped.startsWith("--")) continue;
+
+    const lower = stripped.toLowerCase();
+
+    // Rule: mixed spaces and tabs
+    if (/\t/.test(line) && / /.test(line)) {
+      diagnostics.push({ line: lineNum, type: "warning", rule: "mixed-indent", msg: "Mixed spaces and tabs for indentation" });
+    }
+
+    // Rule: trailing whitespace
+    if (/\s+$/.test(line)) {
+      diagnostics.push({ line: lineNum, type: "info", rule: "trailing-whitespace", msg: "Trailing whitespace" });
+    }
+
+    // Rule: line too long
+    const maxLen = parseInt(document.getElementById("lineWidth").value) || 120;
+    if (stripped.length > maxLen) {
+      diagnostics.push({ line: lineNum, type: "warning", rule: "line-too-long", msg: `Line exceeds ${maxLen} characters (${stripped.length})` });
+    }
+
+    // Rule: global variable assignment (no local)
+    const globalAssign = /^(\w+)\s*=/.exec(stripped);
+    if (globalAssign && !stripped.startsWith("local ") && !isLuauGlobal(globalAssign[1])) {
+      diagnostics.push({ line: lineNum, type: "warning", rule: "global-variable", msg: `Global variable "${globalAssign[1]}" — consider using "local"` });
+    }
+
+    // Rule: deprecated function
+    if (/\bwait\s*\(/.test(stripped)) {
+      diagnostics.push({ line: lineNum, type: "warning", rule: "deprecated-wait", msg: "Use task.wait() instead of wait()" });
+    }
+    if (/\bspawn\s*\(/.test(stripped)) {
+      diagnostics.push({ line: lineNum, type: "warning", rule: "deprecated-spawn", msg: "Use task.spawn() instead of spawn()" });
+    }
+    if (/\bdelay\s*\(/.test(stripped)) {
+      diagnostics.push({ line: lineNum, type: "warning", rule: "deprecated-delay", msg: "Use task.delay() instead of delay()" });
+    }
+
+    // Rule: bare ipairs/pairs without local
+    if (/^\s*ipairs\s*\(/.test(stripped) || /^\s*pairs\s*\(/.test(stripped)) {
+      diagnostics.push({ line: lineNum, type: "info", rule: "unused-iterator", msg: "Iterator result not assigned — did you forget "for k, v in pairs(...)"?" });
+    }
+
+    // Rule: empty block
+    if (lower === "then" || lower === "do" || lower === "else") {
+      const nextLine = lines[i + 1];
+      if (nextLine !== undefined) {
+        const nextStripped = nextLine.trim().toLowerCase();
+        if (nextStripped === "end" || nextStripped === "elseif" || nextStripped === "else") {
+          diagnostics.push({ line: lineNum, type: "warning", rule: "empty-block", msg: "Empty block detected" });
+        }
+      }
+    }
+
+    // Rule: deep nesting
+    const indent = line.match(/^(\s*)/)[1].length;
+    const indentSize = parseInt(document.getElementById("indentSize").value) || 4;
+    const depth = Math.floor(indent / indentSize);
+    if (depth > 5) {
+      diagnostics.push({ line: lineNum, type: "info", rule: "deep-nesting", msg: `Deep nesting (${depth} levels) — consider refactoring` });
+    }
+
+    // Rule: magic numbers
+    const magic = stripped.match(/[^\w](\d{2,})[^\w]/g);
+    if (magic) {
+      for (const m of magic) {
+        const num = m.replace(/\D/g, "");
+        if (num && num !== "0" && num !== "1" && !stripped.includes("--")) {
+          // Skip array indices and common constants
+          if (!/\[\s*\d+\s*\]/.test(stripped)) {
+            diagnostics.push({ line: lineNum, type: "info", rule: "magic-number", msg: `Magic number ${num} — consider naming it` });
+          }
+        }
+      }
+    }
+
+    // Rule: unused variable (basic heuristic)
+    const localDecl = /^local\s+(\w+)/.exec(stripped);
+    if (localDecl) {
+      const varName = localDecl[1];
+      // Check if used later (simple scan)
+      let used = false;
+      for (let j = i + 1; j < lines.length; j++) {
+        const later = lines[j].trim();
+        if (later.startsWith("end") || later.startsWith("elseif") || later.startsWith("else")) break;
+        const regex = new RegExp("\\b" + varName + "\\b");
+        if (regex.test(later) && !later.startsWith("local " + varName)) {
+          used = true; break;
+        }
+      }
+      if (!used && i < lines.length - 1) {
+        diagnostics.push({ line: lineNum, type: "info", rule: "unused-variable", msg: `Variable "${varName}" may be unused` });
+      }
+    }
+
+    // Rule: string concatenation in loop
+    if ((lower.startsWith("for ") || lower.startsWith("while ")) && loopDepth === 0) {
+      loopDepth++;
+    }
+    if (loopDepth > 0 && /\.\./.test(stripped) && !stripped.startsWith("--")) {
+      diagnostics.push({ line: lineNum, type: "warning", rule: "string-concat-loop", msg: "String concatenation inside loop — consider table.concat()" });
+    }
+    if (stripped.startsWith("end") || stripped === "end") {
+      loopDepth = Math.max(0, loopDepth - 1);
+    }
+
+    // Rule: undefined variable (basic)
+    const identifiers = stripped.match(/\b[a-zA-Z_][a-zA-Z0-9_]*\b/g) || [];
+    for (const id of identifiers) {
+      if (!isLuauGlobal(id) && !isLuauKeyword(id)) {
+        // Very basic: if it looks like a variable and wasn't declared local
+        // This is heuristic-only
+      }
+    }
+  }
+
+  return diagnostics;
+}
+
+function isLuauGlobal(name) {
+  const globals = [
+    "_G","_VERSION","assert","collectgarbage","dofile","error","getfenv","getmetatable",
+    "ipairs","load","loadfile","loadstring","module","next","pairs","pcall","print",
+    "rawequal","rawget","rawset","require","select","setfenv","setmetatable","tonumber",
+    "tostring","type","unpack","xpcall","game","workspace","script","math","string",
+    "table","coroutine","os","debug","utf8","bit32","task","buffer","vector","DateTime",
+    "Enum","Instance","CFrame","Vector3","Vector2","Color3","UDim","UDim2","Rect",
+    "NumberRange","NumberSequence","BrickColor","TweenInfo","Random","RaycastParams",
+    "OverlapParams","Region3","Region3int16","Axes","Faces","PhysicalProperties",
+    "FloatCurveKey","RotationCurveKey","Font","CatalogSearchParams",
+    "tick","time","wait","spawn","delay","warn","typeof","settings","shared",
+    "plugin","UserSettings","stats","version","printidentity"
+  ];
+  return globals.includes(name);
+}
+
+function isLuauKeyword(name) {
+  const keywords = [
+    "and","break","do","else","elseif","end","false","for","function","if",
+    "in","local","nil","not","or","repeat","return","then","true","until","while"
+  ];
+  return keywords.includes(name);
+}
+
+// ========================
+// Syntax highlighting
+// ========================
+function highlightLuau(code) {
+  let html = escapeHtml(code);
+
+  // Comments (must be first)
+  html = html.replace(/(--\[\[.*?\]\])/gs, '<span class="cmt">$1</span>');
+  html = html.replace(/(--.*$)/gm, '<span class="cmt">$1</span>');
+
+  // Strings
+  html = html.replace(/("(?:[^"\\]|\\.)*")/g, '<span class="str">$1</span>');
+  html = html.replace(/('(?:[^'\\]|\\.)*')/g, '<span class="str">$1</span>');
+  html = html.replace(/(\[\[.*?\]\])/gs, '<span class="str">$1</span>');
+
+  // Numbers
+  html = html.replace(/\b(\d+\.?\d*)\b/g, '<span class="num">$1</span>');
+
+  // Keywords
+  const keywords = ["and","break","do","else","elseif","end","false","for","function","if","in","local","nil","not","or","repeat","return","then","true","until","while"];
+  for (const kw of keywords) {
+    const regex = new RegExp("\\b(" + kw + ")\\b", "g");
+    html = html.replace(regex, '<span class="kw">$1</span>');
+  }
+
+  // Library functions
+  const libs = ["print","warn","error","assert","pairs","ipairs","next","select","tonumber","tostring","type","unpack","pcall","xpcall","require","getfenv","setfenv","getmetatable","setmetatable","rawget","rawset","rawequal","collectgarbage","dofile","loadfile","loadstring","module","wait","spawn","delay","tick","time","typeof"];
+  for (const lib of libs) {
+    const regex = new RegExp("\\b(" + lib + ")\\b(?!</span>)", "g");
+    html = html.replace(regex, '<span class="lib">$1</span>');
+  }
+
+  // Function calls
+  html = html.replace(/(\w+)(\s*\()/g, '<span class="fn">$1</span>$2');
+
+  return html;
+}
+
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// ========================
+// UI Actions
+// ========================
+function runFormat() {
+  const input = document.getElementById("input").value;
+  if (!input.trim()) {
+    showToast("Paste some Luau code first");
+    return;
+  }
+
+  const opts = {
+    indentSize: parseInt(document.getElementById("indentSize").value) || 4,
+    useTabs: document.getElementById("indentType").value === "tab",
+    lineWidth: parseInt(document.getElementById("lineWidth").value) || 120
+  };
+
+  const formatted = formatLuau(input, opts);
+  document.getElementById("output").innerHTML = highlightLuau(formatted);
+
+  // Update badges
+  const inLines = input.split("\n").length;
+  const outLines = formatted.split("\n").length;
+  document.getElementById("inputBadge").textContent = inLines + " lines";
+  document.getElementById("outputBadge").textContent = outLines + " lines";
+
+  // Run linter on original code
+  const diagnostics = lintLuau(input);
+  renderDiagnostics(diagnostics);
+
+  showToast("Formatted & analyzed");
+}
+
+function renderDiagnostics(diagnostics) {
+  const list = document.getElementById("lintList");
+  const errCount = diagnostics.filter(d => d.type === "error").length;
+  const warnCount = diagnostics.filter(d => d.type === "warning").length;
+  const infoCount = diagnostics.filter(d => d.type === "info").length;
+
+  document.getElementById("errCount").textContent = "● " + errCount + " errors";
+  document.getElementById("warnCount").textContent = "● " + warnCount + " warnings";
+  document.getElementById("okCount").textContent = "● " + infoCount + " info";
+
+  if (diagnostics.length === 0) {
+    list.innerHTML = '<div class="lint-item" style="color:var(--positive)"><div style="padding:8px 0">Clean! No issues found.</div></div>';
+    return;
+  }
+
+  list.innerHTML = diagnostics.map(d => {
+    const dotClass = d.type === "error" ? "error" : d.type === "warning" ? "warning" : "info";
+    return `
+      <div class="lint-item" onclick="jumpToLine(${d.line})">
+        <div class="lint-dot ${dotClass}"></div>
+        <div class="lint-line">${d.line}</div>
+        <div class="lint-msg">
+          ${escapeHtml(d.msg)}
+          <div class="rule">${escapeHtml(d.rule)}</div>
         </div>
-        <div class="speed-control">
-          <label for="scrollSpeed">Thumb speed</label>
-          <input type="range" id="scrollSpeed" min="0" max="100" value="55">
-          <div class="speed-readout" id="speedReadout">Casual scroll</div>
-        </div>
       </div>
+    `;
+  }).join("");
+}
 
-      <div class="feed-window">
-        <div class="feed-track" id="feedTrack"></div>
-        <div class="glance-marker"></div>
-      </div>
-      <button class="btn btn-ghost" id="replayBtn">↺ Replay the glance</button>
-    </div>
+function jumpToLine(lineNum) {
+  const textarea = document.getElementById("input");
+  const lines = textarea.value.split("\n");
+  let pos = 0;
+  for (let i = 0; i < lineNum - 1 && i < lines.length; i++) {
+    pos += lines[i].length + 1;
+  }
+  textarea.focus();
+  textarea.setSelectionRange(pos, pos);
+}
 
-    <!-- Context grid -->
-    <div class="context-grid">
-      <span class="eyebrow grid-label">Where it actually gets seen</span>
-      <div class="ctx-cards" id="ctxCards">
+function copyOutput() {
+  const output = document.getElementById("output");
+  const text = output.textContent || output.innerText;
+  navigator.clipboard.writeText(text).then(() => showToast("Copied to clipboard"));
+}
 
-        <article class="ctx-card" data-ctx="feed">
-          <header><span>Mobile feed tile</span><small>~110px wide</small></header>
-          <div class="ctx-frame frame-feed"><canvas></canvas></div>
-        </article>
+function downloadOutput() {
+  const output = document.getElementById("output");
+  const text = output.textContent || output.innerText;
+  const blob = new Blob([text], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "formatted.luau";
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast("Downloaded formatted.luau");
+}
 
-        <article class="ctx-card" data-ctx="sidebar">
-          <header><span>Sidebar "up next"</span><small>dim, half-attention</small></header>
-          <div class="ctx-frame frame-sidebar"><canvas></canvas></div>
-        </article>
+function clearAll() {
+  document.getElementById("input").value = "";
+  document.getElementById("output").innerHTML = '<span style="color:var(--text-tertiary)">-- Formatted output will appear here</span>';
+  document.getElementById("lintList").innerHTML = '<div class="lint-item" style="color:var(--text-tertiary)"><div style="padding:8px 0">No diagnostics yet. Paste code and click Format to analyze.</div></div>';
+  document.getElementById("inputBadge").textContent = "0 lines";
+  document.getElementById("outputBadge").textContent = "0 lines";
+  document.getElementById("errCount").textContent = "● 0 errors";
+  document.getElementById("warnCount").textContent = "● 0 warnings";
+  document.getElementById("okCount").textContent = "● 0 info";
+}
 
-        <article class="ctx-card" data-ctx="tv">
-          <header><span>TV, across the room</span><small>10-foot viewing</small></header>
-          <div class="ctx-frame frame-tv"><canvas></canvas></div>
-        </article>
+function loadSample() {
+  const sample = `local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-        <article class="ctx-card" data-ctx="notif">
-          <header><span>Push notification</span><small>crushed to a chip</small></header>
-          <div class="ctx-frame frame-notif"><canvas></canvas></div>
-        </article>
+local function calculateDamage(base, multiplier)
+if base and multiplier then
+local result=base*multiplier
+if result>100 then
+return 100
+else
+return result
+end
+end
+end
 
-        <article class="ctx-card" data-ctx="dark">
-          <header><span>Dark mode, low brightness</span><small>night scrolling</small></header>
-          <div class="ctx-frame frame-dark"><canvas></canvas></div>
-        </article>
+local function onPlayerAdded(player)
+player.CharacterAdded:Connect(function(char)
+local hum = char:WaitForChild("Humanoid")
+hum.Died:Connect(function()
+print(player.Name.." died")
+end)
+end)
+end
 
-        <article class="ctx-card" data-ctx="cb">
-          <header><span>Colorblind pass (deuteranopia)</span><small>~1 in 12 viewers</small></header>
-          <div class="ctx-frame frame-cb"><canvas></canvas></div>
-        </article>
+for i=1,10 do
+wait(1)
+print("tick "..i)
+end
 
-      </div>
-    </div>
+Players.PlayerAdded:Connect(onPlayerAdded)`;
+  document.getElementById("input").value = sample;
+  document.getElementById("inputBadge").textContent = sample.split("\n").length + " lines";
+}
 
-    <!-- Verdict -->
-    <div class="verdict-panel" id="verdictPanel">
-      <span class="eyebrow">Readout</span>
-      <div class="verdict-grid" id="verdictGrid"></div>
-    </div>
+function showToast(msg) {
+  const toast = document.getElementById("toast");
+  toast.textContent = msg;
+  toast.classList.add("show");
+  setTimeout(() => toast.classList.remove("show"), 2000);
+}
 
-    <button class="btn btn-line" id="resetBtn">Try a different thumbnail</button>
-  </section>
-</main>
-
-<!-- ============ CODE BENCH ============ -->
-<main class="stage hidden" id="code-mode">
-  <section class="hero hero-code">
-    <h1>Paste it. <em>Fix</em> it.</h1>
-    <p class="hero-sub">Real formatting via js-beautify, real static checks — bracket balance, unsafe patterns, line length. No pretend AI, no made-up verdicts.</p>
-  </section>
-
-  <section class="bench">
-    <div class="bench-col">
-      <div class="bench-head">
-        <span class="eyebrow">Input</span>
-        <select id="langSelect">
-          <option value="js">JavaScript</option>
-          <option value="css">CSS</option>
-          <option value="html">HTML</option>
-          <option value="json">JSON</option>
-        </select>
-      </div>
-      <textarea id="codeInput" spellcheck="false" placeholder="Paste code here..."></textarea>
-      <div class="bench-actions">
-        <button class="btn btn-solid" id="formatBtn">Format</button>
-        <button class="btn btn-ghost" id="checkBtn">Run checks</button>
-        <button class="btn btn-line" id="clearCodeBtn">Clear</button>
-      </div>
-    </div>
-
-    <div class="bench-col">
-      <div class="bench-head">
-        <span class="eyebrow">Output</span>
-        <button class="btn btn-ghost btn-small" id="copyCodeBtn">Copy</button>
-      </div>
-      <pre class="code-out"><code id="codeOutput">// formatted code appears here</code></pre>
-      <div class="checks-panel" id="checksPanel">
-        <p class="muted-note">Run checks to see results here.</p>
-      </div>
-    </div>
-  </section>
-</main>
-
-<div class="toast" id="toast"></div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.1/beautify.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.1/beautify-css.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.1/beautify-html.min.js"></script>
-<script src="pov.js"></script>
-<script src="app.js"></script>
+// Auto-format on Ctrl+Enter
+document.getElementById("input").addEventListener("keydown", function(e) {
+  if (e.ctrlKey && e.key === "Enter") {
+    e.preventDefault();
+    runFormat();
+  }
+});
+</script>
 </body>
-</html>
+  </html>
